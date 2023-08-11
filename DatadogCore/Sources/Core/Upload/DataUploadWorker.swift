@@ -34,6 +34,8 @@ internal class DataUploadWorker: DataUploadWorkerType {
     /// Upload work scheduled by this worker.
     private var uploadWork: DispatchWorkItem?
 
+    private var backgroundTaskCoordinator: BackgroundTaskCoordinator?
+
     init(
         queue: DispatchQueue,
         fileReader: Reader,
@@ -41,13 +43,15 @@ internal class DataUploadWorker: DataUploadWorkerType {
         contextProvider: DatadogContextProvider,
         uploadConditions: DataUploadConditions,
         delay: Delay,
-        featureName: String
+        featureName: String,
+        backgroundTaskCoordinator: BackgroundTaskCoordinator? = nil
     ) {
         self.queue = queue
         self.fileReader = fileReader
         self.uploadConditions = uploadConditions
         self.dataUploader = dataUploader
         self.contextProvider = contextProvider
+        self.backgroundTaskCoordinator = backgroundTaskCoordinator
         self.delay = delay
         self.featureName = featureName
 
@@ -55,7 +59,7 @@ internal class DataUploadWorker: DataUploadWorkerType {
             guard let self = self else {
                 return
             }
-
+            let taskID = self.backgroundTaskCoordinator?.registerBackgroundTask()
             let context = contextProvider.read()
             let blockersForUpload = self.uploadConditions.blockersForUpload(with: context)
             let isSystemReady = blockersForUpload.isEmpty
@@ -102,7 +106,9 @@ internal class DataUploadWorker: DataUploadWorkerType {
 
                 self.delay.increase()
             }
-
+            if let taskID = taskID {
+                self.backgroundTaskCoordinator?.endBackgroundTaskIfActive(taskID)
+            }
             self.scheduleNextUpload(after: self.delay.current)
         }
 

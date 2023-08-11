@@ -27,6 +27,13 @@ class DataUploadWorkerTests: XCTestCase {
         orchestrator: orchestrator,
         encryption: nil
     )
+    fileprivate lazy var backgroundTaskCoordinator: SpyBackgroundTaskCoordinator? = {
+        #if canImport(UIKit)
+        return SpyBackgroundTaskCoordinator()
+        #else
+        return nil
+        #endif
+    }()
 
     override func setUp() {
         super.setUp()
@@ -557,5 +564,20 @@ private extension DataUploadConditions {
 
     static func neverUpload() -> DataUploadConditions {
         return DataUploadConditions(minBatteryLevel: 1)
+    }
+}
+
+private class SpyBackgroundTaskCoordinator: BackgroundTaskCoordinator {
+    private(set) var beginBackgroundTaskCount: Int = 0
+    private(set) var endBackgroundTaskCount: Int = 0
+
+    func registerBackgroundTask() -> UUID {
+        beginBackgroundTaskCount += 1
+        return UUID.mockRandom()
+    }
+
+    func endBackgroundTaskIfActive(_ uuid: UUID) -> Bool {
+        endBackgroundTaskCount += 1
+        return true
     }
 }
