@@ -18,7 +18,7 @@ import UIKit
 /// The `BackgroundTaskCoordinator` class provides an abstraction for managing background tasks and includes methods for registering and ending background tasks.
 /// It also serves as a useful abstraction for testing purposes.
 internal class UIKitBackgroundTaskCoordinator: BackgroundTaskCoordinator {
-    private var tasks: [UUID: UIBackgroundTaskIdentifier] = [:]
+    internal var tasks: [UUID: UIBackgroundTaskIdentifier] = [:]
 
     internal func registerBackgroundTask() -> UUID {
         let uuid = UUID()
