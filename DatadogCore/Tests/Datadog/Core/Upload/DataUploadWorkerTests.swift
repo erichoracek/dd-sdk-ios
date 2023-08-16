@@ -537,6 +537,27 @@ class DataUploadWorkerTests: XCTestCase {
 
         worker.cancelSynchronously()
     }
+
+    func testItTriggersBackgroundTaskRegistration() {
+        let worker = DataUploadWorker(
+            queue: uploaderQueue,
+            fileReader: reader,
+            dataUploader: DataUploaderMock(uploadStatus: .mockWith()),
+            contextProvider: .mockAny(),
+            uploadConditions: .alwaysUpload(),
+            delay: DataUploadDelay(performance: UploadPerformanceMock.veryQuick),
+            featureName: .mockAny(),
+            backgroundTaskCoordinator: backgroundTaskCoordinator
+        )
+        writer.write(value: ["k1": "v1"])
+
+        // When
+        worker.flushSynchronously()
+
+        // Then
+        XCTAssertEqual(backgroundTaskCoordinator?.beginBackgroundTaskCount, 1)
+        XCTAssertEqual(backgroundTaskCoordinator?.endBackgroundTaskCount, 1)
+    }
 }
 
 struct MockDelay: Delay {
