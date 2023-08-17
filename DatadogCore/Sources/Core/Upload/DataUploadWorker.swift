@@ -55,9 +55,12 @@ internal class DataUploadWorker: DataUploadWorkerType {
         self.delay = delay
         self.featureName = featureName
 
-        let uploadWork = DispatchWorkItem { [weak self, delay] in
-            self?.tryToSendBatch()
-            self?.scheduleNextUpload(after: delay.current)
+        let uploadWork = DispatchWorkItem { [weak self] in
+            guard let self = self else {
+                return
+            }
+            self.tryToSendBatch()
+            self.scheduleNextUpload(after: self.delay.current)
         }
 
         self.uploadWork = uploadWork
@@ -69,38 +72,39 @@ internal class DataUploadWorker: DataUploadWorkerType {
         guard let work = uploadWork else {
             return
         }
-
         queue.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
-    private func tryToSendBatch(_ batch: Batch? = nil) {
-        let taskID = self.backgroundTaskCoordinator?.registerBackgroundTask()
+    private func tryToSendBatch(_ batch: Batch? = nil, retryOnce: Bool = false) {
+        let taskID = backgroundTaskCoordinator?.registerBackgroundTask()
         let context = contextProvider.read()
-        let blockersForUpload = self.uploadConditions.blockersForUpload(with: context)
+        let blockersForUpload = uploadConditions.blockersForUpload(with: context)
         let isSystemReady = blockersForUpload.isEmpty
         let nextBatch = isSystemReady
-            ? (batch ?? self.fileReader.readNextBatch())
+            ? (batch ?? fileReader.readNextBatch())
             : nil
         if let batch = nextBatch {
-            DD.logger.debug("⏳ (\(self.featureName)) Uploading batch...")
+            DD.logger.debug("⏳ (\(featureName)) Uploading batch...")
 
             do {
                 // Upload batch
-                let uploadStatus = try self.dataUploader.upload(
+                let uploadStatus = try dataUploader.upload(
                     events: batch.events,
                     context: context
                 )
 
                 // Delete or keep batch depending on the upload status
                 if uploadStatus.needsRetry {
-                    self.delay.increase()
+                    delay.increase()
+                    DD.logger.debug("   → (\(featureName)) not delivered, will be retransmitted: \(uploadStatus.userDebugDescription)")
 
-                    DD.logger.debug("   → (\(self.featureName)) not delivered, will be retransmitted: \(uploadStatus.userDebugDescription)")
-                } else {
-                    self.fileReader.markBatchAsRead(batch, reason: .intakeCode(responseCode: uploadStatus.responseCode ?? -1)) // -1 is unexpected here
-                    self.delay.decrease()
+                    tryToSendBatch(batch, retryOnce: false)
+                }
+                else {
+                    fileReader.markBatchAsRead(batch, reason: .intakeCode(responseCode: uploadStatus.responseCode ?? -1)) // -1 is unexpected here
+                    delay.decrease()
 
-                    DD.logger.debug("   → (\(self.featureName)) accepted, won't be retransmitted: \(uploadStatus.userDebugDescription)")
+                    DD.logger.debug("   → (\(featureName)) accepted, won't be retransmitted: \(uploadStatus.userDebugDescription)")
                 }
 
                 switch uploadStatus.error {
@@ -115,16 +119,16 @@ internal class DataUploadWorker: DataUploadWorkerType {
             } catch let error {
                 // If upload can't be initiated do not retry, so drop the batch:
                 self.fileReader.markBatchAsRead(batch, reason: .invalid)
-                DD.telemetry.error("Failed to initiate '\(self.featureName)' data upload", error: error)
+                DD.telemetry.error("Failed to initiate '\(featureName)' data upload", error: error)
             }
         } else {
             let batchLabel = nextBatch != nil ? "YES" : (isSystemReady ? "NO" : "NOT CHECKED")
-            DD.logger.debug("💡 (\(self.featureName)) No upload. Batch to upload: \(batchLabel), System conditions: \(blockersForUpload.description)")
+            DD.logger.debug("💡 (\(featureName)) No upload. Batch to upload: \(batchLabel), System conditions: \(blockersForUpload.description)")
 
-            self.delay.increase()
+            delay.increase()
         }
         if let taskID = taskID {
-            self.backgroundTaskCoordinator?.endBackgroundTaskIfActive(taskID)
+            backgroundTaskCoordinator?.endBackgroundTaskIfActive(taskID)
         }
     }
 
@@ -133,7 +137,7 @@ internal class DataUploadWorker: DataUploadWorkerType {
     internal func flushSynchronously() {
         queue.sync { [weak self] in
             while let nextBatch = self?.fileReader.readNextBatch() {
-                self?.tryToSendBatch(nextBatch)
+                self?.tryToSendBatch(nextBatch, retry: false)
             }
         }
     }

@@ -28,11 +28,11 @@ class DataUploadWorkerTests: XCTestCase {
         encryption: nil
     )
     fileprivate lazy var backgroundTaskCoordinator: SpyBackgroundTaskCoordinator? = {
-        #if canImport(UIKit)
+#if canImport(UIKit)
         return SpyBackgroundTaskCoordinator()
-        #else
+#else
         return nil
-        #endif
+#endif
     }()
 
     override func setUp() {
@@ -557,6 +557,28 @@ class DataUploadWorkerTests: XCTestCase {
         // Then
         XCTAssertEqual(backgroundTaskCoordinator?.beginBackgroundTaskCount, 1)
         XCTAssertEqual(backgroundTaskCoordinator?.endBackgroundTaskCount, 1)
+    }
+
+    func testItChangesDelayWhenNeeded() {
+        // Given
+        let delay = DataUploadDelay(performance: UploadPerformanceMock.veryQuick)
+        let dataUploader = DataUploaderMock(uploadStatus: .mockWith(needsRetry: true))
+        var worker = DataUploadWorker(
+            queue: uploaderQueue,
+            fileReader: reader,
+            dataUploader: dataUploader,
+            contextProvider: .mockAny(),
+            uploadConditions: .alwaysUpload(),
+            delay: delay,
+            featureName: .mockAny()
+        )
+        writer.write(value: ["k1": "v1"])
+
+        // When
+        worker.flushSynchronously()
+
+        // Then
+        XCTAssertEqual(delay.current, 0.1)
     }
 }
 
