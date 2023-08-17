@@ -29,7 +29,7 @@ internal class DataUploadWorker: DataUploadWorkerType {
     private let contextProvider: DatadogContextProvider
 
     /// Delay used to schedule consecutive uploads.
-    private var delay: Delay
+    private let delay: Delay
 
     /// Upload work scheduled by this worker.
     private var uploadWork: DispatchWorkItem?
@@ -59,7 +59,56 @@ internal class DataUploadWorker: DataUploadWorkerType {
             guard let self = self else {
                 return
             }
-            self.tryToSendBatch()
+            let taskID = self.backgroundTaskCoordinator?.registerBackgroundTask()
+            let context = contextProvider.read()
+            let blockersForUpload = self.uploadConditions.blockersForUpload(with: context)
+            let isSystemReady = blockersForUpload.isEmpty
+            let nextBatch = isSystemReady ? self.fileReader.readNextBatch() : nil
+            if let batch = nextBatch {
+                DD.logger.debug("⏳ (\(self.featureName)) Uploading batch...")
+
+                do {
+                    // Upload batch
+                    let uploadStatus = try self.dataUploader.upload(
+                        events: batch.events,
+                        context: context
+                    )
+
+                    // Delete or keep batch depending on the upload status
+                    if uploadStatus.needsRetry {
+                        self.delay.increase()
+
+                        DD.logger.debug("   → (\(self.featureName)) not delivered, will be retransmitted: \(uploadStatus.userDebugDescription)")
+                    } else {
+                        self.fileReader.markBatchAsRead(batch, reason: .intakeCode(responseCode: uploadStatus.responseCode ?? -1)) // -1 is unexpected here
+                        self.delay.decrease()
+
+                        DD.logger.debug("   → (\(self.featureName)) accepted, won't be retransmitted: \(uploadStatus.userDebugDescription)")
+                    }
+
+                    switch uploadStatus.error {
+                    case .unauthorized:
+                        DD.logger.error("⚠️ Make sure that the provided token still exists and you're targeting the relevant Datadog site.")
+                    case let .httpError(statusCode: statusCode):
+                        DD.telemetry.error("Data upload finished with status code: \(statusCode)")
+                    case let .networkError(error: error):
+                        DD.telemetry.error("Data upload finished with error", error: error)
+                    case .none: break
+                    }
+                } catch let error {
+                    // If upload can't be initiated do not retry, so drop the batch:
+                    self.fileReader.markBatchAsRead(batch, reason: .invalid)
+                    DD.telemetry.error("Failed to initiate '\(self.featureName)' data upload", error: error)
+                }
+            } else {
+                let batchLabel = nextBatch != nil ? "YES" : (isSystemReady ? "NO" : "NOT CHECKED")
+                DD.logger.debug("💡 (\(self.featureName)) No upload. Batch to upload: \(batchLabel), System conditions: \(blockersForUpload.description)")
+
+                self.delay.increase()
+            }
+            if let taskID = taskID {
+                self.backgroundTaskCoordinator?.endBackgroundTaskIfActive(taskID)
+            }
             self.scheduleNextUpload(after: self.delay.current)
         }
 
@@ -72,72 +121,27 @@ internal class DataUploadWorker: DataUploadWorkerType {
         guard let work = uploadWork else {
             return
         }
+
         queue.asyncAfter(deadline: .now() + delay, execute: work)
-    }
-
-    private func tryToSendBatch(_ batch: Batch? = nil, retryOnce: Bool = false) {
-        let taskID = backgroundTaskCoordinator?.registerBackgroundTask()
-        let context = contextProvider.read()
-        let blockersForUpload = uploadConditions.blockersForUpload(with: context)
-        let isSystemReady = blockersForUpload.isEmpty
-        let nextBatch = isSystemReady
-            ? (batch ?? fileReader.readNextBatch())
-            : nil
-        if let batch = nextBatch {
-            DD.logger.debug("⏳ (\(featureName)) Uploading batch...")
-
-            do {
-                // Upload batch
-                let uploadStatus = try dataUploader.upload(
-                    events: batch.events,
-                    context: context
-                )
-
-                // Delete or keep batch depending on the upload status
-                if uploadStatus.needsRetry {
-                    delay.increase()
-                    DD.logger.debug("   → (\(featureName)) not delivered, will be retransmitted: \(uploadStatus.userDebugDescription)")
-
-                    tryToSendBatch(batch, retryOnce: false)
-                }
-                else {
-                    fileReader.markBatchAsRead(batch, reason: .intakeCode(responseCode: uploadStatus.responseCode ?? -1)) // -1 is unexpected here
-                    delay.decrease()
-
-                    DD.logger.debug("   → (\(featureName)) accepted, won't be retransmitted: \(uploadStatus.userDebugDescription)")
-                }
-
-                switch uploadStatus.error {
-                case .unauthorized:
-                    DD.logger.error("⚠️ Make sure that the provided token still exists and you're targeting the relevant Datadog site.")
-                case let .httpError(statusCode: statusCode):
-                    DD.telemetry.error("Data upload finished with status code: \(statusCode)")
-                case let .networkError(error: error):
-                    DD.telemetry.error("Data upload finished with error", error: error)
-                case .none: break
-                }
-            } catch let error {
-                // If upload can't be initiated do not retry, so drop the batch:
-                self.fileReader.markBatchAsRead(batch, reason: .invalid)
-                DD.telemetry.error("Failed to initiate '\(featureName)' data upload", error: error)
-            }
-        } else {
-            let batchLabel = nextBatch != nil ? "YES" : (isSystemReady ? "NO" : "NOT CHECKED")
-            DD.logger.debug("💡 (\(featureName)) No upload. Batch to upload: \(batchLabel), System conditions: \(blockersForUpload.description)")
-
-            delay.increase()
-        }
-        if let taskID = taskID {
-            backgroundTaskCoordinator?.endBackgroundTaskIfActive(taskID)
-        }
     }
 
     /// Sends all unsent data synchronously.
     /// - It performs arbitrary upload (without checking upload condition and without re-transmitting failed uploads).
     internal func flushSynchronously() {
-        queue.sync { [weak self] in
-            while let nextBatch = self?.fileReader.readNextBatch() {
-                self?.tryToSendBatch(nextBatch, retry: false)
+        queue.sync {
+            while let nextBatch = self.fileReader.readNextBatch() {
+                defer {
+                    // RUMM-3459 Delete the underlying batch with `.flushed` reason that will be ignored in reported
+                    // metrics or telemetry. This is legitimate as long as `flush()` routine is only available for testing
+                    // purposes and never run in production apps.
+                    self.fileReader.markBatchAsRead(nextBatch, reason: .flushed)
+                }
+                do {
+                    // Try uploading the batch and do one more retry on failure.
+                    _ = try self.dataUploader.upload(events: nextBatch.events, context: contextProvider.read())
+                } catch {
+                    _ = try? self.dataUploader.upload(events: nextBatch.events, context: contextProvider.read())
+                }
             }
         }
     }

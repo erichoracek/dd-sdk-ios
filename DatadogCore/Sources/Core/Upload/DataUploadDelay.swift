@@ -9,12 +9,12 @@ import DatadogInternal
 
 internal protocol Delay {
     var current: TimeInterval { get }
-    mutating func decrease()
-    mutating func increase()
+    func decrease()
+    func increase()
 }
 
 /// Mutable interval used for periodic data uploads.
-internal struct DataUploadDelay: Delay {
+internal class DataUploadDelay: Delay {
     private let minDelay: TimeInterval
     private let maxDelay: TimeInterval
     private let changeRate: Double
@@ -29,11 +29,11 @@ internal struct DataUploadDelay: Delay {
 
     var current: TimeInterval { delay }
 
-    mutating func decrease() {
+    func decrease() {
         delay = max(minDelay, delay * (1.0 - changeRate))
     }
 
-    mutating func increase() {
+    func increase() {
         delay = min(delay * (1.0 + changeRate), maxDelay)
     }
 }
