@@ -6,6 +6,8 @@
 
 import Foundation
 
+/// The `BackgroundTaskCoordinator` protocol provides an abstraction for managing background tasks and includes methods for registering and ending background tasks.
+/// It serves as a useful abstraction for testing purposes as well as allows decoupling from UIKit in order to maintain Catalyst compliation.
 internal protocol BackgroundTaskCoordinator {
     func registerBackgroundTask() -> BackgroundTaskIdentifier?
     func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: BackgroundTaskIdentifier)
@@ -16,8 +18,6 @@ internal typealias BackgroundTaskIdentifier = Int
 #if canImport(UIKit)
 import UIKit
 
-/// The `BackgroundTaskCoordinator` class provides an abstraction for managing background tasks and includes methods for registering and ending background tasks.
-/// It also serves as a useful abstraction for testing purposes.
 internal class UIKitBackgroundTaskCoordinator: BackgroundTaskCoordinator {
     internal func registerBackgroundTask() -> BackgroundTaskIdentifier? {
         return UIApplication.dd.managedShared?.beginBackgroundTask().rawValue
