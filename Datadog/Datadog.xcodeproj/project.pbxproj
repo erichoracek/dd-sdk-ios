@@ -450,6 +450,8 @@
 		9E68FB55244707FD0013A8AA /* ObjcExceptionHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9E68FB53244707FD0013A8AA /* ObjcExceptionHandler.m */; };
 		9E68FB56244707FD0013A8AA /* ObjcExceptionHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 9E68FB54244707FD0013A8AA /* ObjcExceptionHandler.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		9EE5AD8226205B82001E699E /* DDNSURLSessionDelegateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE5AD8126205B82001E699E /* DDNSURLSessionDelegateTests.swift */; };
+		A70A82652A935F210072F5DC /* BackgroundTaskCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70A82642A935F210072F5DC /* BackgroundTaskCoordinator.swift */; };
+		A70A82662A935F210072F5DC /* BackgroundTaskCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70A82642A935F210072F5DC /* BackgroundTaskCoordinator.swift */; };
 		A728ADAB2934EA2100397996 /* W3CHTTPHeadersWriter+objc.swift in Sources */ = {isa = PBXBuildFile; fileRef = A728ADAA2934EA2100397996 /* W3CHTTPHeadersWriter+objc.swift */; };
 		A728ADAC2934EA2100397996 /* W3CHTTPHeadersWriter+objc.swift in Sources */ = {isa = PBXBuildFile; fileRef = A728ADAA2934EA2100397996 /* W3CHTTPHeadersWriter+objc.swift */; };
 		A728ADB02934EB0900397996 /* DDW3CHTTPHeadersWriter+apiTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A728ADAD2934EB0300397996 /* DDW3CHTTPHeadersWriter+apiTests.m */; };
@@ -2341,6 +2343,7 @@
 		9EC8B5D92668197B000F7529 /* VitalCPUReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalCPUReader.swift; sourceTree = "<group>"; };
 		9EC8B5ED2668E4DB000F7529 /* VitalCPUReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalCPUReaderTests.swift; sourceTree = "<group>"; };
 		9EE5AD8126205B82001E699E /* DDNSURLSessionDelegateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDNSURLSessionDelegateTests.swift; sourceTree = "<group>"; };
+		A70A82642A935F210072F5DC /* BackgroundTaskCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackgroundTaskCoordinator.swift; sourceTree = "<group>"; };
 		A728AD9C2934CE4400397996 /* W3CHTTPHeaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = W3CHTTPHeaders.swift; sourceTree = "<group>"; };
 		A728AD9E2934CE5000397996 /* W3CHTTPHeadersWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = W3CHTTPHeadersWriter.swift; sourceTree = "<group>"; };
 		A728ADA02934CE5D00397996 /* W3CHTTPHeadersReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = W3CHTTPHeadersReader.swift; sourceTree = "<group>"; };
@@ -5396,7 +5399,7 @@
 		D26C49B428893E5300802B2D /* Upload */ = {
 			isa = PBXGroup;
 			children = (
-				A76AEDF62A863E8700B5D087 /* BackgroundTaskCoordinator.swift */,
+				A70A82642A935F210072F5DC /* BackgroundTaskCoordinator.swift */,
 				D26C49BE288982DA00802B2D /* FeatureUpload.swift */,
 				61133BB32423979B00786299 /* DataUploadDelay.swift */,
 				61ED39D326C2A36B002C0F26 /* DataUploadStatus.swift */,
@@ -7238,6 +7241,7 @@
 				61DA8CA928609C5B0074A606 /* Directories.swift in Sources */,
 				D2EFA868286DA85700F1FAA6 /* DatadogContextProvider.swift in Sources */,
 				D26C49BF288982DA00802B2D /* FeatureUpload.swift in Sources */,
+				A70A82652A935F210072F5DC /* BackgroundTaskCoordinator.swift in Sources */,
 				61D3E0D2277B23F1008BE766 /* KronosInternetAddress.swift in Sources */,
 				D2553826288F0B1A00727FAD /* BatteryStatusPublisher.swift in Sources */,
 				61D3E0D5277B23F1008BE766 /* KronosNTPPacket.swift in Sources */,
@@ -7256,7 +7260,6 @@
 				61C3638524361E9200C4D4E6 /* Globals.swift in Sources */,
 				D20605CB2875A83F0047275C /* ContextValueReader.swift in Sources */,
 				61D3E0DB277B23F1008BE766 /* KronosNSTimer+ClosureKit.swift in Sources */,
-				A76AEDF72A863E8700B5D087 /* BackgroundTaskCoordinator.swift in Sources */,
 				D20605A92874C1CD0047275C /* NetworkConnectionInfoPublisher.swift in Sources */,
 				614396722A67D74F00197326 /* CoreMetrics.swift in Sources */,
 				D20605A6287476230047275C /* ServerOffsetPublisher.swift in Sources */,
@@ -8314,6 +8317,7 @@
 				D20605AA2874C1CD0047275C /* NetworkConnectionInfoPublisher.swift in Sources */,
 				D29CDD3328211A2200F7DAA5 /* DataBlock.swift in Sources */,
 				D2612F48290197C700509B7D /* LaunchTimePublisher.swift in Sources */,
+				A70A82662A935F210072F5DC /* BackgroundTaskCoordinator.swift in Sources */,
 				D20605CA2875A83D0047275C /* ContextValueReader.swift in Sources */,
 				D2A1EE24287740B500D28DFB /* ApplicationStatePublisher.swift in Sources */,
 				D2CB6E2927C50EAE00A62B57 /* KronosInternetAddress.swift in Sources */,
@@ -8332,7 +8336,6 @@
 				D2CB6E4327C50EAE00A62B57 /* ObjcExceptionHandler.m in Sources */,
 				D2A7841029A53B2F003B03BB /* Directory.swift in Sources */,
 				61DA8CB028620C760074A606 /* Cryptography.swift in Sources */,
-				A76AEDF82A863E8700B5D087 /* BackgroundTaskCoordinator.swift in Sources */,
 				D2DC4BF727F484AA00E4FB96 /* DataEncryption.swift in Sources */,
 				614396732A67D74F00197326 /* CoreMetrics.swift in Sources */,
 				D29294E1291D5ED500F8EFF9 /* ApplicationVersionPublisher.swift in Sources */,
