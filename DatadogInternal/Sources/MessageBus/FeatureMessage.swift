@@ -8,24 +8,11 @@ import Foundation
 
 /// The set of messages that can be transimtted on the Features message bus.
 public enum FeatureMessage {
-    /// An error message.
-    case error(
-        message: String,
-        baggage: FeatureBaggage
-    )
-
-    /// An encodable event that will be transmitted
-    /// as-is through a Feature.
-    case event(
-        target: String,
-        event: AnyEncodable
-    )
-
     /// A custom message with generic encodable
     /// attributes.
-    case custom(
-        key: String,
-        baggage: FeatureBaggage
+    case baggage(
+        label: String,
+        baggage: NewFeatureBaggage
     )
 
     /// A core context message.
@@ -38,4 +25,31 @@ public enum FeatureMessage {
     ///
     /// The core can send telemtry data coming from all Features.
     case telemetry(TelemetryMessage)
+}
+
+extension FeatureMessage {
+    /// Creates a `.baggage` message with thegiven label and `Encodable` type.
+    ///
+    /// - Parameters:
+    ///   - label: The baggage label.
+    ///   - baggage: The baggage value.
+    /// - Returns: a `.baggage` case.
+    public static func baggage<Value>(label: String, value: Value) throws -> FeatureMessage where Value: Encodable {
+        try .baggage(label: label, baggage: .init(value))
+    }
+
+    /// Decodes the value of a baggage if the label matches.
+    ///
+    /// - Parameters:
+    ///   - label: The requested baggage label.
+    ///   - type: The expected type of the baggage value.
+    /// - Returns: The decoded baggage value, or nil if the label doesn't match.
+    /// - Throws: A `DecodingError` if decoding fails.
+    public func baggage<Value>(label: String, type: Value.Type = Value.self) throws -> Value? where Value: Decodable {
+        guard case let .baggage(_label, baggage) = self, _label == label else {
+            return nil
+        }
+
+        return try baggage.decode(type: type)
+    }
 }

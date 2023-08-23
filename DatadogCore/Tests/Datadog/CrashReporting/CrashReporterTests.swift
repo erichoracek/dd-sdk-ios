@@ -78,7 +78,7 @@ class CrashReporterTests: XCTestCase {
 
         waitForExpectations(timeout: 0.5, handler: nil)
 
-        XCTAssert(!rumCrashReceiver.receivedBaggage.isEmpty, "RUM baggage must not be empty")
+        XCTAssertNotNil(rumCrashReceiver.receivedBaggage, "RUM baggage must not be empty")
     }
 
     func testWhenPendingCrashReportIsFound_itIsSentToLogsFeature() throws {
@@ -109,7 +109,7 @@ class CrashReporterTests: XCTestCase {
 
         waitForExpectations(timeout: 0.5, handler: nil)
 
-        XCTAssert(!logsCrashReceiver.receivedBaggage.isEmpty, "Logs baggage must not be empty")
+        XCTAssertNotNil(logsCrashReceiver.receivedBaggage, "Logs baggage must not be empty")
     }
 
     func testWhenPendingCrashReportIsNotFound_itDoesNothing() {
