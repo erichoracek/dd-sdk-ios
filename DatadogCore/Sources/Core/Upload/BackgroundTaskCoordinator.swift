@@ -7,24 +7,32 @@
 import Foundation
 
 /// The `BackgroundTaskCoordinator` protocol provides an abstraction for managing background tasks and includes methods for registering and ending background tasks.
-/// It serves as a useful abstraction for testing purposes as well as allows decoupling from UIKit in order to maintain Catalyst compliation.
+/// It serves as a useful abstraction for testing purposes as well as allows decoupling from UIKit in order to maintain Catalyst compliation. To abstract from UIKit, it leverages
+/// the fact that UIBackgroundTaskIdentifier raw value is based on Int.
 internal protocol BackgroundTaskCoordinator {
-    func registerBackgroundTask() -> BackgroundTaskIdentifier?
-    func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: BackgroundTaskIdentifier)
+    func registerBackgroundTask() -> Int
+    func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: Int)
 }
-
-internal typealias BackgroundTaskIdentifier = Int
 
 #if canImport(UIKit)
 import UIKit
 
 internal class UIKitBackgroundTaskCoordinator: BackgroundTaskCoordinator {
-    internal func registerBackgroundTask() -> BackgroundTaskIdentifier? {
-        return UIApplication.dd.managedShared?.beginBackgroundTask().rawValue
+    private var currentBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+
+    internal func registerBackgroundTask() -> Int {
+        guard let app = UIApplication.dd.managedShared else {
+            return UIBackgroundTaskIdentifier.invalid.rawValue
+        }
+        currentBackgroundTask = app.beginBackgroundTask(expirationHandler: { [currentBackgroundTask] in
+            UIApplication.dd.managedShared?.endBackgroundTask(currentBackgroundTask)
+        })
+        return currentBackgroundTask.rawValue
     }
 
-    func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: BackgroundTaskIdentifier) {
+    func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: Int) {
         UIApplication.dd.managedShared?.endBackgroundTask(.init(rawValue: backgroundTaskIdentifier))
+        currentBackgroundTask = .invalid
     }
 }
 #endif

@@ -251,7 +251,7 @@ class DataUploadWorkerTests: XCTestCase {
         let worker = DataUploadWorker(
             queue: uploaderQueue,
             fileReader: reader,
-            dataUploader: DataUploaderMock(uploadStatus: .mockWith()),
+            dataUploader: DataUploaderMock(uploadStatus: .mockWith(needsRetry: false)),
             contextProvider: .mockAny(),
             uploadConditions: DataUploadConditions.alwaysUpload(),
             delay: delay,
@@ -577,12 +577,12 @@ private class SpyBackgroundTaskCoordinator: BackgroundTaskCoordinator {
         self.endBackgroundTaskCalled = endBackgroundTaskCalled
     }
 
-    func registerBackgroundTask() -> BackgroundTaskIdentifier? {
+    func registerBackgroundTask() -> Int {
         registerBackgroundTaskCalled()
-        return BackgroundTaskIdentifier.mockRandom()
+        return Int.mockRandom()
     }
 
-    func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: BackgroundTaskIdentifier) {
+    func endBackgroundTaskIfActive(_ backgroundTaskIdentifier: Int) {
         endBackgroundTaskCalled()
     }
 }
